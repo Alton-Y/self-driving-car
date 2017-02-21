@@ -70,16 +70,16 @@ def draw_lines(img, lines, color=[255, 0, 0], thickness=2):
         for x1,y1,x2,y2 in line:
             cv2.line(img, (x1, y1), (x2, y2), color, thickness)
 
-def hough_lines(img, rho, theta, threshold, min_line_len, max_line_gap):
-    """
-    `img` should be the output of a Canny transform.
-        
-    Returns an image with hough lines drawn.
-    """
-    lines = cv2.HoughLinesP(img, rho, theta, threshold, np.array([]), minLineLength=min_line_len, maxLineGap=max_line_gap)
-    line_img = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8)
-    draw_lines(line_img, lines)
-    return line_img
+# def hough_lines(img, rho, theta, threshold, min_line_len, max_line_gap):
+#     """
+#     `img` should be the output of a Canny transform.
+#         
+#     Returns an image with hough lines drawn.
+#     """
+#     lines = cv2.HoughLinesP(img, rho, theta, threshold, np.array([]), minLineLength=min_line_len, maxLineGap=max_line_gap)
+#     line_img = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8)
+#     draw_lines(line_img, lines)
+#     return line_img
 
 # Python 3 has support for cool math symbols.
 
@@ -108,7 +108,16 @@ os.listdir("test_images/")
 # then save them to the test_images directory.
 
 
-def line_detect(image):
+
+# creating a for loop to read all images within "test_images/" directory
+im_dir = "test_images/" # define image folder path
+im_list = os.listdir(im_dir)
+# im_list = im_list[0:1]
+for im_name in im_list: # for loop
+    image = mpimg.imread(im_dir+im_name) # read image from (im_dir + im_name)
+    
+    
+    
     # Apply grayscale
     image_gs = grayscale(image) 
     
@@ -135,56 +144,107 @@ def line_detect(image):
     threshold = 30
     min_line_len = 100
     max_line_gap = 75
-    image_hough = hough_lines(image_masked, rho, theta, threshold, min_line_len, max_line_gap)
+    # image_hough = hough_lines(image_masked, rho, theta, threshold, min_line_len, max_line_gap)
+    img = image_masked #temp
+    lines = cv2.HoughLinesP(img, rho, theta, threshold, np.array([]), minLineLength=min_line_len, maxLineGap=max_line_gap)
+    line_img = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8)
+    draw_lines(line_img, lines, [255,0,0], 1)
+    image_hough = line_img # return
+    
+    
+    # NOTE: format of lines:
+    # array([[X1, Y1, X2, Y2]],
+    #       [[X1, Y1, X2, Y2]], dtype=int32)
+    
+    # Calculate slope of each hough line
+    # NOTE: No. of found hough lines = length of variable lines
+    # Slicing the X1,Y1,X2,Y2 coordinates from lines for ele.wise calc
+    X1 = lines[:,:,0]
+    Y1 = -lines[:,:,1];
+    X2 = lines[:,:,2];
+    Y2 = -lines[:,:,3];
+    # calculate slope 
+    m = rad2deg((Y2-Y1)/(X2-X1))
+    
+    # NOTE: points shall be separted to left and right lane
+    # determined by the valeu of the slope
+    # left_lane (+ve slope), right_lane (-ve slope)
+    left_lane = lines[m>0]
+    right_lane = lines[m<0]
+    # rearrange left_lane and right_lane matrices
+    left_lane_X = hstack((left_lane[:,0],left_lane[:,2]))
+    left_lane_Y = hstack((left_lane[:,1],left_lane[:,3]))
+    right_lane_X = hstack((right_lane[:,0],right_lane[:,2]))
+    right_lane_Y = hstack((right_lane[:,1],right_lane[:,3]))
+    
+    # NOTE: linear fit lanes
+    # Because ultimately we want to plot the x position of the lane by inputing y location. So we can draw the lines between certain vertical locations within the frame. 
+    # Therefore we have to invert the regression model by setting y-coordinates as input and x-coordinates as output
+    # apply .reshape(-1, 1) to funtion input to allow model fit
+    from sklearn import linear_model
+    left_lane_reg = linear_model.LinearRegression()
+    left_lane_reg.fit(left_lane_Y.reshape(-1, 1), left_lane_X)
+    right_lane_reg = linear_model.LinearRegression()
+    right_lane_reg.fit(right_lane_Y.reshape(-1, 1), right_lane_X)
+    
+    # Feed test points back to linear regression models
+    # aka find the X intercept
+    left_lane_Y_fit = right_lane_Y_fit = array([imshape[0]*0.6,imshape[0]])
+    left_lane_X_fit = left_lane_reg.predict(left_lane_Y_fit.reshape(2,1))
+    right_lane_X_fit = right_lane_reg.predict(right_lane_Y_fit.reshape(2,1))
+        
+    
+    
+    # Draw lines
+    fit_lines = array([[[left_lane_X_fit[0],left_lane_Y_fit[0],left_lane_X_fit[1],left_lane_Y_fit[1]],[right_lane_X_fit[0],right_lane_Y_fit[0],right_lane_X_fit[1],right_lane_Y_fit[1]]]], dtype=int32)
+    draw_lines(image_hough, fit_lines, [0,255,0], 5)
+
+    # fig = plt.figure(2)
+    # plt.plot(left_lane_X_fit,-left_lane_Y_fit)
+    # plt.plot(right_lane_X_fit,-right_lane_Y_fit)
+    # plt.scatter(left_lane_X, -left_lane_Y,  color='red')
+    # plt.scatter(right_lane_X, -right_lane_Y,  color='blue')
+    # plt.xlim((0, 960))
+    # plt.ylim((-540, 0))
+    # plt.xticks()
+    # plt.yticks()
+    # plt.show()
+
+  
     
     # Overlay Hough Transform Results
     result = weighted_img(image_hough, image)
-    
-    return result
 
-
-
-
-# creating a for loop to read all images within "test_images/" directory
-im_dir = "test_images/" # define image folder path
-im_list = os.listdir(im_dir)
-# im_list = im_list[1:2]
-for im_name in im_list: # for loop
-    image = mpimg.imread(im_dir+im_name) # read image from (im_dir + im_name)
-    result = line_detect(image)
-
-    
     
     print('Image Path:', im_dir+im_name)
-    print('Dimesions:', image.shape)   
-    fig = plt.figure(figsize=(15,8))
+    fig = plt.figure(figsize=(10,5))
     plt.imshow(result)
     
         
     
-#     fig = plt.figure(figsize=(20,18))
-#     plt.subplot(321)
-#     plt.title('Raw Image Input')
-#     plt.imshow(image)
+    # fig = plt.figure(figsize=(10,10))
+    # plt.subplot(321)
+    # plt.title('Raw Image Input')
+    # plt.imshow(image)
 
-#     plt.subplot(322)
-#     plt.title('Grayscale Filter')
-#     plt.imshow(image_gs, cmap='gray')
-    
-#     plt.subplot(323)
-#     plt.title('Canny Edge Detection')
-#     plt.imshow(image_canny,cmap='Greys_r')
-    
-#     plt.subplot(324)
-#     plt.imshow(image_masked,cmap='Greys_r')
-    
-#     plt.subplot(325)
-#     plt.imshow(image_hough,cmap='Greys_r')
-    
-#     plt.subplot(326)
-#     plt.imshow(result)
-    
-    plt.show()
+    #   plt.subplot(322)
+    # plt.title('Grayscale Filter')
+    # plt.imshow(image_gs, cmap='gray')
+    # 
+    # plt.subplot(323)
+    # plt.title('Canny Edge Detection')
+    # plt.imshow(image_canny,cmap='Greys_r')
+    # 
+    # plt.subplot(324)
+    # plt.imshow(image_masked,cmap='Greys_r')
+    # 
+    # plt.subplot(325)
+    # plt.imshow(image_hough,cmap='Greys_r')
+    # 
+    # plt.subplot(326)
+    # plt.imshow(result)
+    # 
+    # plt.show()
 
     
     
