@@ -104,20 +104,10 @@ os.listdir("test_images/")
 
 
 
-# TODO: Build your pipeline that will draw lane lines on the test_images
-# then save them to the test_images directory.
 
-
-
-# creating a for loop to read all images within "test_images/" directory
-im_dir = "test_images/" # define image folder path
-im_list = os.listdir(im_dir)
-# im_list = im_list[0:1]
-for im_name in im_list: # for loop
-    image = mpimg.imread(im_dir+im_name) # read image from (im_dir + im_name)
     
     
-    
+def process_image(image):
     # Apply grayscale
     image_gs = grayscale(image) 
     
@@ -168,9 +158,13 @@ for im_name in im_list: # for loop
     
     # NOTE: points shall be separted to left and right lane
     # determined by the valeu of the slope
+    
+    # TODO: remove hough line results with extreme slopes
+    processed_lines = lines
+    
     # left_lane (+ve slope), right_lane (-ve slope)
-    left_lane = lines[m>0]
-    right_lane = lines[m<0]
+    left_lane = processed_lines[m>0]
+    right_lane = processed_lines[m<0]
     # rearrange left_lane and right_lane matrices
     left_lane_X = hstack((left_lane[:,0],left_lane[:,2]))
     left_lane_Y = hstack((left_lane[:,1],left_lane[:,3]))
@@ -214,10 +208,24 @@ for im_name in im_list: # for loop
     
     # Overlay Hough Transform Results
     result = weighted_img(image_hough, image)
+    
+    return result
 
+# TODO: Build your pipeline that will draw lane lines on the test_images
+# then save them to the test_images directory.
+
+# creating a for loop to read all images within "test_images/" directory
+im_dir = "test_images/" # define image folder path
+im_list = os.listdir(im_dir)
+im_list = im_list[0:1]
+for im_name in im_list: # for loop
+    image = mpimg.imread(im_dir+im_name) # read image from (im_dir + im_name)
+    
+    
+    result = process_image(image)
     
     print('Image Path:', im_dir+im_name)
-    fig = plt.figure(figsize=(10,5))
+    fig = plt.figure(1,figsize=(10,5))
     plt.imshow(result)
     
         
@@ -247,11 +255,22 @@ for im_name in im_list: # for loop
     # plt.show()
 
     
+# Test on Videos
+# Import everything needed to edit/save/watch video clips
+from moviepy.editor import VideoFileClip
+from IPython.display import HTML
+
+white_output = 'white.mp4'
+clip1 = VideoFileClip("solidWhiteRight.mp4")
+white_clip = clip1.fl_image(process_image) #NOTE: this function expects color images!!
+# %time white_clip.write_videofile(white_output, audio=False)
+white_clip.write_videofile(white_output, audio=False)
     
-    
-    
-    
-    
+    ##
+yellow_output = 'yellow.mp4'
+clip2 = VideoFileClip('solidYellowLeft.mp4')
+yellow_clip = clip2.fl_image(process_image)
+yellow_clip.write_videofile(yellow_output, audio=False)
     
     
     
