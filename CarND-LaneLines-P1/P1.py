@@ -159,12 +159,11 @@ def process_image(image):
     # NOTE: points shall be separted to left and right lane
     # determined by the valeu of the slope
     
-    # TODO: remove hough line results with extreme slopes
-    processed_lines = lines
-    
+    # NOTE: Remove hough line results with extreme slopes
     # left_lane (+ve slope), right_lane (-ve slope)
-    left_lane = processed_lines[m>0]
-    right_lane = processed_lines[m<0]
+    slope_threshold = 20; # ignore hough lines which are +/- this value
+    left_lane = lines[m > 20]
+    right_lane = lines[m < -20]
     # rearrange left_lane and right_lane matrices
     left_lane_X = hstack((left_lane[:,0],left_lane[:,2]))
     left_lane_Y = hstack((left_lane[:,1],left_lane[:,3]))
@@ -266,7 +265,7 @@ white_clip = clip1.fl_image(process_image) #NOTE: this function expects color im
 # %time white_clip.write_videofile(white_output, audio=False)
 white_clip.write_videofile(white_output, audio=False)
     
-    ##
+#
 yellow_output = 'yellow.mp4'
 clip2 = VideoFileClip('solidYellowLeft.mp4')
 yellow_clip = clip2.fl_image(process_image)
