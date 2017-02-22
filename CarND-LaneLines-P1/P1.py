@@ -12,6 +12,11 @@ def grayscale(img):
     but NOTE: to see the returned image as grayscale
     (assuming your grayscaled image is called 'gray')
     you should call plt.imshow(gray, cmap='gray')"""
+    
+    b,g,r = cv2.split(img)
+    img = cv2.cvtColor(b,cv2.COLOR_GRAY2RGB)
+    
+    
     return cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
     # Or use BGR2GRAY if you read an image with cv2.imread()
 #     return cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -49,7 +54,10 @@ def region_of_interest(img, vertices):
     return masked_image
 
 # TODO: detect the brightness of the road
-# def road_brightness(vertices):
+def road_brightness(image,X,Y,width,height):
+    image_crop = image[int(Y):int(Y+height),int(X):int(X+width)]
+    brightness = image_crop.mean()
+    return brightness
     
 
 
@@ -113,8 +121,20 @@ os.listdir("test_images/")
     
     
 def process_image(image):
+    
+    brightness = road_brightness(image,frame.shape[1]*0.45,frame.shape[0]*0.7,frame.shape[1]*0.15,frame.shape[0]*0.2)
+    
+    # img_output = frame + 95 - int(brightness)
+    # print(brightness)
+    # print(road_brightness(img_output,frame.shape[1]*0.45,frame.shape[0]*0.7,frame.shape[1]*0.15,frame.shape[0]*0.2))
+    
+    
     # Apply grayscale
     image_gs = grayscale(image) 
+    # print(image_gs)
+    image_gs = image_gs + 95 - int(brightness)
+    
+    # print(road_brightness(image_gs,frame.shape[1]*0.45,frame.shape[0]*0.7,frame.shape[1]*0.15,frame.shape[0]*0.2))
     
     # Apply Gaussian Noise kernel
     kernel_size = 7
@@ -235,10 +255,10 @@ def process_image(image):
     # Results with fit lanes only
     image_fitline = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8)
     draw_lines(image_fitline, fit_lines, [0,255,0], 5)
-    result = weighted_img(image_fitline, image,0.7,0.7,0)
+    result = weighted_img(image_fitline, image,1,1,0)
     
-    rgb_canny = cv2.cvtColor(image_masked,cv2.COLOR_GRAY2RGB)
-    result = weighted_img(rgb_canny,image_hough)
+    # rgb_canny = cv2.cvtColor(image_masked,cv2.COLOR_GRAY2RGB)
+    # result = weighted_img(rgb_canny,image_hough)
     
     return result
 
@@ -249,7 +269,7 @@ def process_image(image):
 im_dir = "test_images/" # define image folder path
 im_list = os.listdir(im_dir)
 print(im_list)
-im_list = im_list[5:7]
+im_list = im_list[5:6]
 i = 1;
 for im_name in im_list: # for loop
     image = mpimg.imread(im_dir+im_name) # read image from (im_dir + im_name)
@@ -307,7 +327,7 @@ yellow_clip = clip2.fl_image(process_image)
 yellow_clip.write_videofile(yellow_output, audio=False)
     
     
-##
+#
 challenge_output = 'extra.mp4'
 clip2 = VideoFileClip('challenge.mp4')
 challenge_clip = clip2.fl_image(process_image)
@@ -316,26 +336,35 @@ challenge_clip.write_videofile(challenge_output, audio=False)
 ##
 
 
-frame = clip2.get_frame(130/25)
-
-fig = plt.figure(1,figsize=(10,5))   
+frame = clip2.get_frame(115/25)
+ 
 
 # img_yuv = cv2.cvtColor(frame, cv2.COLOR_BGR2YUV)
 # img_yuv[:,:,0] = cv2.equalizeHist(img_yuv[:,:,0])
 # img_output = cv2.cvtColor(img_yuv, cv2.COLOR_YUV2BGR)
-img_output = frame - 100
+# frame = mpimg.imread(im_dir+'solidWhiteCurve.jpg')
 
+# brightness = road_brightness(frame,frame.shape[1]*0.45,frame.shape[0]*0.7,frame.shape[1]*0.15,frame.shape[0]*0.2)
+# print(int(brightness))
+# img_output = frame + 95 - int(brightness)
+# # print(brightness)
+# print(road_brightness(img_output,frame.shape[1]*0.45,frame.shape[0]*0.7,frame.shape[1]*0.15,frame.shape[0]*0.2))
 
+b,g,r = cv2.split(frame)
+singlechannel = cv2.cvtColor(b,cv2.COLOR_GRAY2RGB)
 
-plt.imshow(img_output) 
-
-result = process_image(img_output)
-
-
-
+fig = plt.figure(1,figsize=(10,5))  
+plt.imshow(singlechannel) 
+#
+# # 
 fig = plt.figure(2,figsize=(10,5))   
+plt.imshow(grayscale(singlechannel),cmap='gray')
+# #
+# # 
+fig = plt.figure(3,figsize=(10,5))   
+result = process_image(singlechannel)
 plt.imshow(result) 
-
+# # print(brightness)
 
     
     
