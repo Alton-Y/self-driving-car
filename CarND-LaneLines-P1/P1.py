@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import numpy as np
 import cv2
-
 import math
+from sklearn import linear_model
 
 def grayscale(img):
     """Applies the Grayscale transform
@@ -47,6 +47,11 @@ def region_of_interest(img, vertices):
     #returning the image only where mask pixels are nonzero
     masked_image = cv2.bitwise_and(img, mask)
     return masked_image
+
+# TODO: detect the brightness of the road
+# def road_brightness(vertices):
+    
+
 
 
 def draw_lines(img, lines, color=[255, 0, 0], thickness=2):
@@ -112,12 +117,12 @@ def process_image(image):
     image_gs = grayscale(image) 
     
     # Apply Gaussian Noise kernel
-    kernel_size = 5
+    kernel_size = 7
     image_blur = gaussian_blur(image_gs, kernel_size)
     
     # Apply Canny transform
-    low_threshold = 50
-    high_threshold = 120
+    low_threshold = 80
+    high_threshold = 150
     image_canny = canny(image_blur, low_threshold, high_threshold) 
     
     # Mask
@@ -129,16 +134,17 @@ def process_image(image):
     image_masked = cv2.bitwise_and(image_canny, image_mask)
 
     # Hough Transform
-    rho = 2
+    rho = 3
     theta = np.pi/180
-    threshold = 30
-    min_line_len = 100
-    max_line_gap = 75
+    threshold = 75
+    min_line_len = 15
+    max_line_gap = 50
+
     # image_hough = hough_lines(image_masked, rho, theta, threshold, min_line_len, max_line_gap)
     img = image_masked #temp
     lines = cv2.HoughLinesP(img, rho, theta, threshold, np.array([]), minLineLength=min_line_len, maxLineGap=max_line_gap)
     line_img = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8)
-    draw_lines(line_img, lines, [255,0,0], 1)
+    draw_lines(line_img, lines, [255,0,0], 5)
     image_hough = line_img # return
     
     
@@ -169,12 +175,30 @@ def process_image(image):
     left_lane_Y = hstack((left_lane[:,1],left_lane[:,3]))
     right_lane_X = hstack((right_lane[:,0],right_lane[:,2]))
     right_lane_Y = hstack((right_lane[:,1],right_lane[:,3]))
-    
+
+    # Error Handling: if no lines were found, make them zeros
+    if left_lane_X.size == 0:
+        left_lane_X = array([0,0])
+        left_lane_Y = array([0,0])
+        print()
+        print('Left Lane Not Found')
+    if right_lane_X.size == 0:
+        right_lane_X = array([0,0])
+        right_lane_Y = array([0,0])
+        print()
+        print('Right Lane Not Found')
+
+    # print()
+    # print(left_lane_X)
+    # print(left_lane_Y)
+    # print(right_lane_X)
+    # print(right_lane_Y)
+
     # NOTE: linear fit lanes
     # Because ultimately we want to plot the x position of the lane by inputing y location. So we can draw the lines between certain vertical locations within the frame. 
     # Therefore we have to invert the regression model by setting y-coordinates as input and x-coordinates as output
     # apply .reshape(-1, 1) to funtion input to allow model fit
-    from sklearn import linear_model
+
     left_lane_reg = linear_model.LinearRegression()
     left_lane_reg.fit(left_lane_Y.reshape(-1, 1), left_lane_X)
     right_lane_reg = linear_model.LinearRegression()
@@ -190,7 +214,7 @@ def process_image(image):
     
     # Draw lines
     fit_lines = array([[[left_lane_X_fit[0],left_lane_Y_fit[0],left_lane_X_fit[1],left_lane_Y_fit[1]],[right_lane_X_fit[0],right_lane_Y_fit[0],right_lane_X_fit[1],right_lane_Y_fit[1]]]], dtype=int32)
-    draw_lines(image_hough, fit_lines, [0,255,0], 5)
+    draw_lines(image_hough, fit_lines, [0,255,0], 2)
 
     # fig = plt.figure(2)
     # plt.plot(left_lane_X_fit,-left_lane_Y_fit)
@@ -206,7 +230,15 @@ def process_image(image):
   
     
     # Overlay Hough Transform Results
-    result = weighted_img(image_hough, image)
+    # result = weighted_img(image_hough, image)
+    
+    # Results with fit lanes only
+    image_fitline = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8)
+    draw_lines(image_fitline, fit_lines, [0,255,0], 5)
+    result = weighted_img(image_fitline, image,0.7,0.7,0)
+    
+    rgb_canny = cv2.cvtColor(image_masked,cv2.COLOR_GRAY2RGB)
+    result = weighted_img(rgb_canny,image_hough)
     
     return result
 
@@ -216,7 +248,9 @@ def process_image(image):
 # creating a for loop to read all images within "test_images/" directory
 im_dir = "test_images/" # define image folder path
 im_list = os.listdir(im_dir)
-im_list = im_list[0:1]
+print(im_list)
+im_list = im_list[5:7]
+i = 1;
 for im_name in im_list: # for loop
     image = mpimg.imread(im_dir+im_name) # read image from (im_dir + im_name)
     
@@ -224,8 +258,9 @@ for im_name in im_list: # for loop
     result = process_image(image)
     
     print('Image Path:', im_dir+im_name)
-    fig = plt.figure(1,figsize=(10,5))
+    fig = plt.figure(i,figsize=(10,5))
     plt.imshow(result)
+    i = i+1
     
         
     
@@ -254,7 +289,7 @@ for im_name in im_list: # for loop
     # plt.show()
 
     
-# Test on Videos
+## Test on Videos
 # Import everything needed to edit/save/watch video clips
 from moviepy.editor import VideoFileClip
 from IPython.display import HTML
@@ -272,16 +307,36 @@ yellow_clip = clip2.fl_image(process_image)
 yellow_clip.write_videofile(yellow_output, audio=False)
     
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+##
+challenge_output = 'extra.mp4'
+clip2 = VideoFileClip('challenge.mp4')
+challenge_clip = clip2.fl_image(process_image)
+challenge_clip.write_videofile(challenge_output, audio=False)
+#     
+##
+
+
+frame = clip2.get_frame(130/25)
+
+fig = plt.figure(1,figsize=(10,5))   
+
+# img_yuv = cv2.cvtColor(frame, cv2.COLOR_BGR2YUV)
+# img_yuv[:,:,0] = cv2.equalizeHist(img_yuv[:,:,0])
+# img_output = cv2.cvtColor(img_yuv, cv2.COLOR_YUV2BGR)
+img_output = frame - 100
+
+
+
+plt.imshow(img_output) 
+
+result = process_image(img_output)
+
+
+
+fig = plt.figure(2,figsize=(10,5))   
+plt.imshow(result) 
+
+
     
     
     
