@@ -298,8 +298,9 @@ from moviepy.editor import VideoFileClip
 # mask_extra = np.array([[[153,684],[576,453],[678,453],[1216,684]]])
 # solidWhiteRight
 # solidYellowLeft
-clip2 = VideoFileClip("solidYellowLeft.mp4")
-frame = clip2.get_frame(600/25)
+# challenge
+clip2 = VideoFileClip("challenge.mp4")
+frame = clip2.get_frame(98/25)
 process_image(frame)    
 
 # TODO: Build your pipeline that will draw lane lines on the test_images
