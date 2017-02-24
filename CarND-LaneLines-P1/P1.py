@@ -135,7 +135,7 @@ def process_image(image):
     # print(road_brightness(image_gs,frame.shape[1]*0.45,frame.shape[0]*0.7,frame.shape[1]*0.15,frame.shape[0]*0.2))
     
     # Apply Gaussian Noise kernel
-    kernel_size = 5
+    kernel_size = 7
     image_blur = gaussian_blur(image_gs, kernel_size)
     
     # Apply Canny transform
@@ -157,7 +157,7 @@ def process_image(image):
     rho = 1
     theta = np.pi/180
     threshold = 30
-    min_line_len = 10
+    min_line_len = 30
     max_line_gap = 40
 
     # image_hough = hough_lines(image_masked, rho, theta, threshold, min_line_len, max_line_gap)
@@ -179,6 +179,7 @@ def process_image(image):
     Y2 = -lines[:,:,3];
     # calculate slope 
     m = rad2deg((Y2-Y1)/(X2-X1))
+    l = ((Y2-Y1)**2+(X2-X1)**2)**0.5
     
     # NOTE: points shall be separted to left and right lane
     # determined by the valeu of the slope
@@ -188,19 +189,13 @@ def process_image(image):
     slope_threshold = 25; # ignore hough lines which are +/- this value
     left_lane = lines[m > slope_threshold]
     right_lane = lines[m < -slope_threshold]
-    
-    
-    
+
+
     # rearrange left_lane and right_lane matrices
     left_lane_X = hstack((left_lane[:,0],left_lane[:,2]))
     left_lane_Y = hstack((left_lane[:,1],left_lane[:,3]))
     right_lane_X = hstack((right_lane[:,0],right_lane[:,2]))
     right_lane_Y = hstack((right_lane[:,1],right_lane[:,3]))
-    
-
-
-    
-    
     
     
     line_img = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8)
@@ -219,31 +214,32 @@ def process_image(image):
         left_lane_X_fit = array([0,0])
         left_lane_Y_fit = array([0,0])
         print('\nLeft Lane Not Found')
-    else:
-        left_lane_reg = linear_model.RANSACRegressor(linear_model.LinearRegression())
-        left_lane_reg.fit(left_lane_Y.reshape(-1, 1), left_lane_X)
+    else:   
+        # Hough line length for line fitting weight
+        left_length = hstack((l[m>slope_threshold],l[m>slope_threshold]))
+        left_lane_reg = linear_model.RANSACRegressor()
+        left_lane_reg.fit(left_lane_Y.reshape(-1, 1), left_lane_X, left_length)
         # Feed test points back to linear regression models
         # aka find the X intercept
         left_lane_Y_fit = array([imshape[0]*0.63,imshape[0]])
         left_lane_X_fit = left_lane_reg.predict(left_lane_Y_fit.reshape(2,1))
+        
+
         
     if right_lane_X.size == 0:
         right_lane_X_fit = array([0,0])
         right_lane_Y_fit = array([0,0])
         print('\nRight Lane Not Found')
     else:
-        right_lane_reg = linear_model.RANSACRegressor(linear_model.LinearRegression())
-        right_lane_reg.fit(right_lane_Y.reshape(-1, 1), right_lane_X)
+        # Hough line length for line fitting weight
+        right_length = hstack((l[m<-slope_threshold],l[m<-slope_threshold]))
+        right_lane_reg = linear_model.RANSACRegressor()
+        right_lane_reg.fit(right_lane_Y.reshape(-1, 1), right_lane_X, right_length)
         # Feed test points back to linear regression models
         # aka find the X intercept
         right_lane_Y_fit = array([imshape[0]*0.63,imshape[0]])
         right_lane_X_fit = right_lane_reg.predict(right_lane_Y_fit.reshape(2,1))
 
-
-    
-
-        
-    
     
     # Draw lines
     fit_lines = array([[[left_lane_X_fit[0],left_lane_Y_fit[0],left_lane_X_fit[1],left_lane_Y_fit[1]],[right_lane_X_fit[0],right_lane_Y_fit[0],right_lane_X_fit[1],right_lane_Y_fit[1]]]], dtype=int32)
@@ -259,7 +255,7 @@ def process_image(image):
     
     # Results with fit lanes only
     image_fitline = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8)
-    draw_lines(image_fitline, fit_lines, [0,255,0], 5)
+    draw_lines(image_fitline, fit_lines, [255,0,0], 10)
     result = weighted_img(image_fitline, image,1,1,0)
     
     # rgb_canny = cv2.cvtColor(image_masked,cv2.COLOR_GRAY2RGB)
@@ -280,27 +276,25 @@ def process_image(image):
     #  # plt.imshow(fit_lines,cmap='Greys_r')   
     # plt.plot(left_lane_X_fit,-left_lane_Y_fit)
     # plt.plot(right_lane_X_fit,-right_lane_Y_fit)
-    # plt.scatter(left_lane_X, -left_lane_Y,  color='red')
+    # plt.scatter(left_lane_X, -left_lane_Y,  s=left_length, cmap='viridis')
     # plt.scatter(right_lane_X, -right_lane_Y,  color='blue')
     # plt.xlim((0, image.shape[1]))
     # plt.ylim((-image.shape[0], 0))
     # plt.xticks()
     # plt.yticks()
     # plt.show()    
-    
+    # 
     return result
 
 
 # Tuning
 from moviepy.editor import VideoFileClip  
-# process_image(image)
-# mask_normal = np.array([[[115,540],[432,340],[508,340],[912,540]]])
-# mask_extra = np.array([[[153,684],[576,453],[678,453],[1216,684]]])
+
 # solidWhiteRight
 # solidYellowLeft
 # challenge
 clip2 = VideoFileClip("challenge.mp4")
-frame = clip2.get_frame(98/25)
+frame = clip2.get_frame(96/25)
 process_image(frame)    
 
 # TODO: Build your pipeline that will draw lane lines on the test_images
