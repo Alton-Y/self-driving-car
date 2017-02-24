@@ -14,10 +14,8 @@ def grayscale(img):
     you should call plt.imshow(gray, cmap='gray')"""
     
     b,g,r = cv2.split(img)
-    img = cv2.cvtColor(b,cv2.COLOR_GRAY2RGB)
-    
-    
-    return cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    image_gs = cv2.cvtColor(b,cv2.COLOR_GRAY2RGB)
+    return image_gs
     # Or use BGR2GRAY if you read an image with cv2.imread()
 #     return cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     
@@ -122,7 +120,7 @@ os.listdir("test_images/")
     
 def process_image(image):
     
-    brightness = road_brightness(image,frame.shape[1]*0.45,frame.shape[0]*0.7,frame.shape[1]*0.15,frame.shape[0]*0.2)
+    brightness = road_brightness(image,image.shape[1]*0.45,image.shape[0]*0.7,image.shape[1]*0.15,image.shape[0]*0.2)
     
     # img_output = frame + 95 - int(brightness)
     # print(brightness)
@@ -132,41 +130,41 @@ def process_image(image):
     # Apply grayscale
     image_gs = grayscale(image) 
     # print(image_gs)
-    image_gs = image_gs + 95 - int(brightness)
+    # image_gs = image_gs + 95 - int(brightness)
     
     # print(road_brightness(image_gs,frame.shape[1]*0.45,frame.shape[0]*0.7,frame.shape[1]*0.15,frame.shape[0]*0.2))
     
     # Apply Gaussian Noise kernel
-    kernel_size = 7
+    kernel_size = 5
     image_blur = gaussian_blur(image_gs, kernel_size)
     
     # Apply Canny transform
-    low_threshold = 80
+    low_threshold = 50
     high_threshold = 150
     image_canny = canny(image_blur, low_threshold, high_threshold) 
     
     # Mask
     image_mask = np.zeros_like(image_canny)   
-    ignore_mask_color = 255   
+    ignore_mask_color = 255
     imshape = image.shape
-    vertices = np.array([[(0,imshape[0]),(imshape[1]*0.45, imshape[0]*0.6), (imshape[1]*0.55, imshape[0]*0.6), (imshape[1],imshape[0])]], dtype=np.int32)
+    vertices = np.array([[(imshape[1]*0.12,imshape[0]*0.98),(imshape[1]*0.40, imshape[0]*0.63), (imshape[1]*0.60, imshape[0]*0.63), (imshape[1]*0.95,imshape[0]*0.98)]], dtype=np.int32);
+    # vertices = mask_vertices
+
     cv2.fillPoly(image_mask, vertices, ignore_mask_color)
     image_masked = cv2.bitwise_and(image_canny, image_mask)
 
     # Hough Transform
-    rho = 3
+    rho = 1
     theta = np.pi/180
-    threshold = 75
-    min_line_len = 15
-    max_line_gap = 50
+    threshold = 30
+    min_line_len = 10
+    max_line_gap = 40
 
     # image_hough = hough_lines(image_masked, rho, theta, threshold, min_line_len, max_line_gap)
     img = image_masked #temp
     lines = cv2.HoughLinesP(img, rho, theta, threshold, np.array([]), minLineLength=min_line_len, maxLineGap=max_line_gap)
-    line_img = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8)
-    draw_lines(line_img, lines, [255,0,0], 5)
-    image_hough = line_img # return
     
+
     
     # NOTE: format of lines:
     # array([[X1, Y1, X2, Y2]],
@@ -187,48 +185,63 @@ def process_image(image):
     
     # NOTE: Remove hough line results with extreme slopes
     # left_lane (+ve slope), right_lane (-ve slope)
-    slope_threshold = 20; # ignore hough lines which are +/- this value
-    left_lane = lines[m > 20]
-    right_lane = lines[m < -20]
+    slope_threshold = 25; # ignore hough lines which are +/- this value
+    left_lane = lines[m > slope_threshold]
+    right_lane = lines[m < -slope_threshold]
+    
+    
+    
     # rearrange left_lane and right_lane matrices
     left_lane_X = hstack((left_lane[:,0],left_lane[:,2]))
     left_lane_Y = hstack((left_lane[:,1],left_lane[:,3]))
     right_lane_X = hstack((right_lane[:,0],right_lane[:,2]))
     right_lane_Y = hstack((right_lane[:,1],right_lane[:,3]))
+    
 
-    # Error Handling: if no lines were found, make them zeros
-    if left_lane_X.size == 0:
-        left_lane_X = array([0,0])
-        left_lane_Y = array([0,0])
-        print()
-        print('Left Lane Not Found')
-    if right_lane_X.size == 0:
-        right_lane_X = array([0,0])
-        right_lane_Y = array([0,0])
-        print()
-        print('Right Lane Not Found')
 
-    # print()
-    # print(left_lane_X)
-    # print(left_lane_Y)
-    # print(right_lane_X)
-    # print(right_lane_Y)
+    
+    
+    
+    
+    line_img = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8)
+    draw_lines(line_img, lines, [255,0,0], 5)
+    image_hough = line_img # return
+
 
     # NOTE: linear fit lanes
     # Because ultimately we want to plot the x position of the lane by inputing y location. So we can draw the lines between certain vertical locations within the frame. 
     # Therefore we have to invert the regression model by setting y-coordinates as input and x-coordinates as output
     # apply .reshape(-1, 1) to funtion input to allow model fit
 
-    left_lane_reg = linear_model.LinearRegression()
-    left_lane_reg.fit(left_lane_Y.reshape(-1, 1), left_lane_X)
-    right_lane_reg = linear_model.LinearRegression()
-    right_lane_reg.fit(right_lane_Y.reshape(-1, 1), right_lane_X)
+
+    # Error Handling: if no lines were found, make them zeros
+    if left_lane_X.size == 0:
+        left_lane_X_fit = array([0,0])
+        left_lane_Y_fit = array([0,0])
+        print('\nLeft Lane Not Found')
+    else:
+        left_lane_reg = linear_model.RANSACRegressor(linear_model.LinearRegression())
+        left_lane_reg.fit(left_lane_Y.reshape(-1, 1), left_lane_X)
+        # Feed test points back to linear regression models
+        # aka find the X intercept
+        left_lane_Y_fit = array([imshape[0]*0.63,imshape[0]])
+        left_lane_X_fit = left_lane_reg.predict(left_lane_Y_fit.reshape(2,1))
+        
+    if right_lane_X.size == 0:
+        right_lane_X_fit = array([0,0])
+        right_lane_Y_fit = array([0,0])
+        print('\nRight Lane Not Found')
+    else:
+        right_lane_reg = linear_model.RANSACRegressor(linear_model.LinearRegression())
+        right_lane_reg.fit(right_lane_Y.reshape(-1, 1), right_lane_X)
+        # Feed test points back to linear regression models
+        # aka find the X intercept
+        right_lane_Y_fit = array([imshape[0]*0.63,imshape[0]])
+        right_lane_X_fit = right_lane_reg.predict(right_lane_Y_fit.reshape(2,1))
+
+
     
-    # Feed test points back to linear regression models
-    # aka find the X intercept
-    left_lane_Y_fit = right_lane_Y_fit = array([imshape[0]*0.6,imshape[0]])
-    left_lane_X_fit = left_lane_reg.predict(left_lane_Y_fit.reshape(2,1))
-    right_lane_X_fit = right_lane_reg.predict(right_lane_Y_fit.reshape(2,1))
+
         
     
     
@@ -237,15 +250,7 @@ def process_image(image):
     draw_lines(image_hough, fit_lines, [0,255,0], 2)
 
     # fig = plt.figure(2)
-    # plt.plot(left_lane_X_fit,-left_lane_Y_fit)
-    # plt.plot(right_lane_X_fit,-right_lane_Y_fit)
-    # plt.scatter(left_lane_X, -left_lane_Y,  color='red')
-    # plt.scatter(right_lane_X, -right_lane_Y,  color='blue')
-    # plt.xlim((0, 960))
-    # plt.ylim((-540, 0))
-    # plt.xticks()
-    # plt.yticks()
-    # plt.show()
+
 
   
     
@@ -259,29 +264,64 @@ def process_image(image):
     
     # rgb_canny = cv2.cvtColor(image_masked,cv2.COLOR_GRAY2RGB)
     # result = weighted_img(rgb_canny,image_hough)
+        
+    # # # # # # TODO:
+    # fig = plt.figure(1,figsize=(10,5))  
+    # plt.clf()
+    # subplot(221)
+    # plt.imshow(result) 
+    # subplot(222)
+    # plt.imshow(image_gs,cmap='Greys_r')    
+    # plt.imshow(image_masked,cmap='Greys_r')   
+    # subplot(223)
+    # plt.imshow(line_img) 
+    # # plt.imshow(image_mask,cmap='Greys_r')   
+    # subplot(224)
+    #  # plt.imshow(fit_lines,cmap='Greys_r')   
+    # plt.plot(left_lane_X_fit,-left_lane_Y_fit)
+    # plt.plot(right_lane_X_fit,-right_lane_Y_fit)
+    # plt.scatter(left_lane_X, -left_lane_Y,  color='red')
+    # plt.scatter(right_lane_X, -right_lane_Y,  color='blue')
+    # plt.xlim((0, image.shape[1]))
+    # plt.ylim((-image.shape[0], 0))
+    # plt.xticks()
+    # plt.yticks()
+    # plt.show()    
     
     return result
 
-# TODO: Build your pipeline that will draw lane lines on the test_images
-# then save them to the test_images directory.
 
-# creating a for loop to read all images within "test_images/" directory
-im_dir = "test_images/" # define image folder path
-im_list = os.listdir(im_dir)
-print(im_list)
-im_list = im_list[5:6]
-i = 1;
-for im_name in im_list: # for loop
-    image = mpimg.imread(im_dir+im_name) # read image from (im_dir + im_name)
-    
-    
-    result = process_image(image)
-    
-    print('Image Path:', im_dir+im_name)
-    fig = plt.figure(i,figsize=(10,5))
-    plt.imshow(result)
-    i = i+1
-    
+# Tuning
+from moviepy.editor import VideoFileClip  
+# process_image(image)
+# mask_normal = np.array([[[115,540],[432,340],[508,340],[912,540]]])
+# mask_extra = np.array([[[153,684],[576,453],[678,453],[1216,684]]])
+# solidWhiteRight
+# solidYellowLeft
+clip2 = VideoFileClip("solidYellowLeft.mp4")
+frame = clip2.get_frame(600/25)
+process_image(frame)    
+
+# TODO: Build your pipeline that will draw lane lines on the test_images
+## then save them to the test_images directory.
+
+# # # # creating a for loop to read all images within "test_images/" directory
+# # # im_dir = "test_images/" # define image folder path
+# # # im_list = os.listdir(im_dir)
+# # # print(im_list)
+# # # im_list = im_list[5:6]
+# # # i = 1;
+# # # for im_name in im_list: # for loop
+# # #     image = mpimg.imread(im_dir+im_name) # read image from (im_dir + im_name)
+# # #     
+# # #     
+# # #     result = process_image(image)
+# # #     
+# # #     print('Image Path:', im_dir+im_name)
+# # #     # fig = plt.figure(i,figsize=(10,5))
+# # #     # plt.imshow(result)
+# # #     i = i+1
+# # #     
         
     
     # fig = plt.figure(figsize=(10,10))
@@ -307,13 +347,13 @@ for im_name in im_list: # for loop
     # plt.imshow(result)
     # 
     # plt.show()
-
     
-## Test on Videos
-# Import everything needed to edit/save/watch video clips
-from moviepy.editor import VideoFileClip
-from IPython.display import HTML
 
+# # # # # ## Test on Videos
+# # # # # # Import everything needed to edit/save/watch video clips
+from moviepy.editor import VideoFileClip
+# # from IPython.display import HTML
+# mask_normal = np.array([[[115,540],[432,340],[508,340],[912,540]]])
 white_output = 'white.mp4'
 clip1 = VideoFileClip("solidWhiteRight.mp4")
 white_clip = clip1.fl_image(process_image) #NOTE: this function expects color images!!
@@ -321,13 +361,15 @@ white_clip = clip1.fl_image(process_image) #NOTE: this function expects color im
 white_clip.write_videofile(white_output, audio=False)
     
 #
+# mask_normal = np.array([[[115,540],[432,340],[508,340],[912,540]]])
 yellow_output = 'yellow.mp4'
 clip2 = VideoFileClip('solidYellowLeft.mp4')
-yellow_clip = clip2.fl_image(process_image)
+yellow_clip = clip2.fl_image(process_image) 
 yellow_clip.write_videofile(yellow_output, audio=False)
     
     
 #
+# mask_extra = np.array([[[153,684],[576,453],[678,453],[1216,633]]])
 challenge_output = 'extra.mp4'
 clip2 = VideoFileClip('challenge.mp4')
 challenge_clip = clip2.fl_image(process_image)
@@ -335,9 +377,6 @@ challenge_clip.write_videofile(challenge_output, audio=False)
 #     
 ##
 
-
-frame = clip2.get_frame(115/25)
- 
 
 # img_yuv = cv2.cvtColor(frame, cv2.COLOR_BGR2YUV)
 # img_yuv[:,:,0] = cv2.equalizeHist(img_yuv[:,:,0])
@@ -350,21 +389,21 @@ frame = clip2.get_frame(115/25)
 # # print(brightness)
 # print(road_brightness(img_output,frame.shape[1]*0.45,frame.shape[0]*0.7,frame.shape[1]*0.15,frame.shape[0]*0.2))
 
-b,g,r = cv2.split(frame)
-singlechannel = cv2.cvtColor(b,cv2.COLOR_GRAY2RGB)
-
-fig = plt.figure(1,figsize=(10,5))  
-plt.imshow(singlechannel) 
-#
+# # b,g,r = cv2.split(frame)
+# # singlechannel = cv2.cvtColor(b,cv2.COLOR_GRAY2RGB)
 # # 
-fig = plt.figure(2,figsize=(10,5))   
-plt.imshow(grayscale(singlechannel),cmap='gray')
-# #
-# # 
-fig = plt.figure(3,figsize=(10,5))   
-result = process_image(singlechannel)
-plt.imshow(result) 
-# # print(brightness)
+# # fig = plt.figure(1,figsize=(10,5))  
+# # plt.imshow(singlechannel) 
+# # #
+# # # # 
+# # fig = plt.figure(2,figsize=(10,5))   
+# # plt.imshow(grayscale(singlechannel),cmap='gray')
+# # # #
+# # # # 
+# # fig = plt.figure(3,figsize=(10,5))   
+# # result = process_image(singlechannel)
+# # plt.imshow(result) 
+# # # # print(brightness)
 
     
     
