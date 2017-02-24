@@ -45,5 +45,5 @@ Also if other extra road markings appear within the lane (e.g. indicating freewa
 
 A possible improvement would be to analysis more footages to account for possible shortcomings. As a general rule of machine learning, more data leads to better model and predictions. More robust models would allow better lane detections. For example, mulitple footages aiming at different angles from the car can be combined and analysed at the same time. Time could possibly reduce blind spots and correct for lens distortions. 
 
-
+More robust line fitting model can be used and implement higher order curve fitting to allow curved lanes to be deteced and plotted. 
 
