@@ -10,14 +10,20 @@ with open('/Users/altonyeung/Google Drive/Udacity/Git/self-driving-car/CarND-Beh
 
 images = []
 measurements = []
+correction = 0.25
 for line in lines: #loop through each line in the csv
-    source_path = line[0] #get file name of center image
-    filename = source_path.split('\\')[-1] #extract only the file name from file path
-    current_path = '/Users/altonyeung/Google Drive/Udacity/Git/self-driving-car/CarND-Behavioral-Cloning-P3/simdata/rev1/IMG/' + filename
-    image = cv2.imread(current_path)
-    images.append(image)
-    measurement = float(line[3]) # get steering angle 
-    measurements.append(measurement)
+    for i in range(3):
+        source_path = line[i] #get file name of center image
+        filename = source_path.split('\\')[-1] #extract only the file name from file path
+        current_path = '/Users/altonyeung/Google Drive/Udacity/Git/self-driving-car/CarND-Behavioral-Cloning-P3/simdata/rev1/IMG/' + filename
+        image = cv2.imread(current_path)
+        images.append(image)
+        measurement = float(line[3]) # get steering angle 
+        if i == 1:
+            measurement += correction
+        elif i == 2:
+            measurement -= correction
+        measurements.append(measurement)
 
 
 augmented_images, augmented_measurements = [], []
@@ -52,5 +58,5 @@ model.add(Dense(1))
 model.compile(loss='mse', optimizer='adam')
 model.fit(X_train, y_train, validation_split=0.2, shuffle=True, nb_epoch=5)
 
-model.save('model_l5.h5')
+model.save('model_nvdax3.h5')
 
