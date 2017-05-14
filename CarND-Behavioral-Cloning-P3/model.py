@@ -1,40 +1,67 @@
 import csv
+import os
+
+simdataList = os.listdir('simdata')
+
+samples = []
+for i in range(len(simdataList)):
+    csvPath = 'simdata/'+simdataList[i]+'/driving_log.csv'
+    with open(csvPath) as csvfile:
+        reader = csv.reader(csvfile)
+        for line in reader:
+            samples.append(line)
+# samples holds every line scanned from every csv
+
+
+from sklearn.model_selection import train_test_split
+train_samples, validation_samples = train_test_split(samples, test_size=0.2)
+
 import cv2
 import numpy as np
+import sklearn
+from sklearn.utils import shuffle
 
-lines = []
-with open('/Users/altonyeung/Google Drive/Udacity/Git/self-driving-car/CarND-Behavioral-Cloning-P3/simdata/training_2/driving_log.csv') as csvfile:
-    reader = csv.reader(csvfile)
-    for line in reader:
-        lines.append(line)
+def generator(samples, batch_size=32):
+    num_samples = len(samples)
+    correction = 0.22
+    while 1: # Loop forever so the generator never terminates
+        shuffle(samples)
+        for offset in range(0, num_samples, batch_size):
+            batch_samples = samples[offset:offset+batch_size]
 
-images = []
-measurements = []
-correction = 0.20
-for line in lines: #loop through each line in the csv
-    for i in range(3):
-        source_path = line[i] #get file name of center image
-        filename = source_path.split('\\')[-1] #extract only the file name from file path
-        current_path = '/Users/altonyeung/Google Drive/Udacity/Git/self-driving-car/CarND-Behavioral-Cloning-P3/simdata/training_2/IMG/' + filename
-        image = cv2.imread(current_path)
-        images.append(image)
-        measurement = float(line[3]) # get steering angle 
-        if i == 1:
-            measurement += correction
-        elif i == 2:
-            measurement -= correction
-        measurements.append(measurement)
+            images = []
+            angles = []
+            for batch_sample in batch_samples:
+                rndSeed = np.random.randint(3) # random select between 0,1,2
+                # rndSeed = 0
+                rndSeed2 = np.random.randint(2) # random flip or not
+                folderName = batch_sample[rndSeed].split('/')[-3]
+                fileName = batch_sample[rndSeed].split('/')[-1]
+                name = 'simdata/'+folderName+'/IMG/'+fileName
+                image = cv2.imread(name)
+                angle = float(batch_sample[3])
 
+                if rndSeed == 1:# left image
+                    angle += correction
+                elif rndSeed == 2: # right image
+                    angle -= correction
 
-augmented_images, augmented_measurements = [], []
-for image, measurement in zip(images, measurements):
-    augmented_images.append(image)
-    augmented_measurements.append(measurement)
-    augmented_images.append(cv2.flip(image,1))
-    augmented_measurements.append(measurement*-1.0)
+                if rndSeed2 == 1: # flip the image
+                    image = cv2.flip(image,1)
+                    angle = angle*-1.0
 
-X_train = np.array(augmented_images)
-y_train = np.array(augmented_measurements)
+                images.append(image)
+                angles.append(angle)
+
+            # trim image to only see section with road
+            X_train = np.array(images)
+            y_train = np.array(angles)
+            yield sklearn.utils.shuffle(X_train, y_train)
+
+# compile and train the model using the generator function
+train_generator = generator(train_samples, batch_size=32)
+validation_generator = generator(validation_samples, batch_size=32)
+
 
 from keras.models import Sequential
 from keras.layers import Flatten, Dense, Lambda, Cropping2D, Activation, Dropout
@@ -42,6 +69,7 @@ from keras.layers.convolutional import Convolution2D
 from keras.layers.pooling import MaxPooling2D
 
 model = Sequential()
+# Preprocess incoming data, centered around zero with small standard deviation 
 model.add(Lambda(lambda x: x / 255.0 - 0.5, input_shape=(160,320,3)))
 model.add(Cropping2D(cropping=((60,20),(0,0))))
 model.add(Convolution2D(24,5,5,subsample=(2,2),activation="relu"))
@@ -50,6 +78,7 @@ model.add(Convolution2D(48,5,5,subsample=(2,2),activation="relu"))
 model.add(Convolution2D(64,3,3,activation="relu"))
 model.add(Convolution2D(64,3,3,activation="relu"))
 model.add(Flatten())
+model.add(Activation('relu'))
 model.add(Dense(100))
 model.add(Activation('relu'))
 model.add(Dropout(0.5))
@@ -63,10 +92,7 @@ model.add(Dense(1))
 model.compile(loss='mse', optimizer='adam')
 
 # model.load_weights('model_weights.h5')
-
-
-model.fit(X_train, y_train, validation_split=0.2, shuffle=True, nb_epoch=5)
+model.fit_generator(train_generator, samples_per_epoch=len(train_samples), validation_data=validation_generator,nb_val_samples=len(validation_samples), nb_epoch=10)
 
 model.save_weights('model_weights.h5')
-model.save('model_nvdax_x4.h5')
-
+model.save('model.h5')
