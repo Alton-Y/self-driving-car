@@ -91,6 +91,12 @@ model.add(Dense(1))
 
 model.compile(loss='mse', optimizer='adam')
 
+from IPython.display import Image, display, SVG
+from keras.utils.visualize_util import model_to_dot
+# Save the model as png file
+from keras.utils.visualize_util import plot
+plot(model, to_file='model.png', show_shapes=True)
+
 # model.load_weights('model_weights.h5')
 model.fit_generator(train_generator, samples_per_epoch=len(train_samples), validation_data=validation_generator,nb_val_samples=len(validation_samples), nb_epoch=10)
 
