@@ -124,9 +124,11 @@ The next major tuning is to select the best colour feature to classify car image
 
 
 
-###Sliding Window Search
+### Sliding Window Search
 
-####1. Describe how (and identify where in your code) you implemented a sliding window search.  How did you decide what scales to search and how much to overlap windows?
+#### 1. Describe how (and identify where in your code) you implemented a sliding window search.  How did you decide what scales to search and how much to overlap windows?
+
+##### Main pipeline is located in P5_Hog.ipynb
 
 Bit of preliminary testing with the test image set provide some insight ot how to set up the sliding window search. In short, three ranges (close, mid, long) were setup to scan three regions with different scales. They all have overlap of 50% to balance speed and accuracy. Images below show the three sliding window search and their parameters.
 
@@ -139,7 +141,7 @@ Here is the close range sliding window search applied on test images.
 ![closerange]
 
 
-####2. Show some examples of test images to demonstrate how your pipeline is working.  What did you do to optimize the performance of your classifier?
+#### 2. Show some examples of test images to demonstrate how your pipeline is working.  What did you do to optimize the performance of your classifier?
 
 Ultimately I searched on two scales using YCrCb 3-channel HOG features plus spatially binned color and histograms of color in the feature vector, which provided a nice result.  Here are all three slider window searches applied onto one test frame.
 
@@ -166,11 +168,11 @@ With the threshold setting set to 4, false flagged result is eliminated and the 
 
 ### Video Implementation
 
-####1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (somewhat wobbly or unstable bounding boxes are ok as long as you are identifying the vehicles most of the time with minimal false positives.)
+#### 1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (somewhat wobbly or unstable bounding boxes are ok as long as you are identifying the vehicles most of the time with minimal false positives.)
 Here's a link to my video result: [Project\_video_output.mp4](./project_video_output.mp4)
 
 
-####2. Describe how (and identify where in your code) you implemented some kind of filter for false positives and some method for combining overlapping bounding boxes.
+#### 2. Describe how (and identify where in your code) you implemented some kind of filter for false positives and some method for combining overlapping bounding boxes.
 
 I recorded the positions of positive detections in each frame of the video.  From the positive detections I created a heatmap and then thresholded that map to identify vehicle positions.  I then used `scipy.ndimage.measurements.label()` to identify individual blobs in the heatmap.  I then assumed each blob corresponded to a vehicle.  I constructed bounding boxes to cover the area of each blob detected.  
 
@@ -190,9 +192,9 @@ Here's an example result showing the heatmap from a series of frames of video, t
 
 ---
 
-###Discussion
+### Discussion
 
-####1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
+#### 1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
 
 The result is still not smooth enough. It should be corrected by higher overlap in window search to have more accuracy position of the cars. Also interframe smoothing can also be implemented to smooth out the result and reduce chances of false positive. Most of the false positve happens on the side of the road. With the previous lane detection, we can use the infomation to detect vehicles only on the road. This could prevent false positive from happening on situration like a car appearing on a roadside billboard. 
 Larger training set can provide better classification results across different coditions and motorcycles. 
