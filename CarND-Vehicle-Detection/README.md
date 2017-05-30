@@ -85,49 +85,89 @@ I then explored the HOG method to identify the vehicle shape from the images usi
 
 `cell_per_block = 2`
 
+Test HOG result is shown below. As you can see the visualization shows the HOG has sucessifully picked up the shape of the car and I am going to use this set of parameter for the HOG pipeline.
 
+[hog_sample]: ./writeup/hog_sample.png
+![hog_sample]
 
-
----
-
-
-
-<!--![alt text][image1]-->
-
-I then explored different color spaces and different `skimage.hog()` parameters (`orientations`, `pixels_per_cell`, and `cells_per_block`).  I grabbed random images from each of the two classes and displayed them to get a feel for what the `skimage.hog()` output looks like.
-
-Here is an example using the `YCrCb` color space and HOG parameters of `orientations=8`, `pixels_per_cell=(8, 8)` and `cells_per_block=(2, 2)`:
-
-
-<!--![alt text][image2]-->
+[norm]: ./writeup/norm.png
+![norm]
 
 ####2. Explain how you settled on your final choice of HOG parameters.
 
-I tried various combinations of parameters and...
+I tried various combinations of parameters and turns out this set gives the most consistant result with relatively short amount of computing time.
 
 ####3. Describe how (and identify where in your code) you trained a classifier using your selected HOG features (and color features if you used them).
 
-I trained a linear SVM using...
+The next major tuning is to select the best colour feature to classify car images. The color spaced I have tried included RGB, HSV, HLS, YCrCb. Within each method, the model was trained with each single color channel and all the channels across training set of 5000. At the end, YCrCb color space and all channels give the best training result of 98.44% with 16000 of car and not-car images. 
+
+|Color Space|  Channel | Accuracy  |
+|-------|-----|-----|
+| RGB   | 0   |0.968|
+| RGB   | 1   |0.981|
+| RGB   | 2   |0.979|
+| RGB   | ALL |0.971|
+| HSV   | 0   |0.994|
+| HSV   | 1   |0.994|
+| HSV   | 2   |0.994|
+| HSV   | ALL |0.994|
+| HLS   | 0   |0.999|
+| HLS   | 1   |0.993|
+| HLS   | 2   |0.995|
+| HLS   | ALL |0.990|
+| YCrCb | 0   |0.992|
+| YCrCb | 1   |0.987|
+| YCrCb | 2   |0.983|
+| YCrCb | ALL |0.998|
+
+
+
+
 
 ###Sliding Window Search
 
 ####1. Describe how (and identify where in your code) you implemented a sliding window search.  How did you decide what scales to search and how much to overlap windows?
 
-I decided to search random window positions at random scales all over the image and came up with this (ok just kidding I didn't actually ;):
+Bit of preliminary testing with the test image set provide some insight ot how to set up the sliding window search. In short, three ranges (close, mid, long) were setup to scan three regions with different scales. They all have overlap of 50% to balance speed and accuracy. Images below show the three sliding window search and their parameters.
 
-![alt text][image3]
+
+[scale]: ./writeup/scale.png
+![scale]
+
+Here is the close range sliding window search applied on test images.
+[closerange]: ./writeup/closerange.png
+![closerange]
+
 
 ####2. Show some examples of test images to demonstrate how your pipeline is working.  What did you do to optimize the performance of your classifier?
 
-Ultimately I searched on two scales using YCrCb 3-channel HOG features plus spatially binned color and histograms of color in the feature vector, which provided a nice result.  Here are some example images:
+Ultimately I searched on two scales using YCrCb 3-channel HOG features plus spatially binned color and histograms of color in the feature vector, which provided a nice result.  Here are all three slider window searches applied onto one test frame.
 
-![alt text][image4]
+[close]: ./writeup/close.png
+[mid]: ./writeup/mid.png
+[far]: ./writeup/far.png
+
+![close]
+![mid]
+![far]
+
+To combat false flag and minimize noise, all three results are added up and presented in a heatmap.
+
+[heat]: ./writeup/heat.png
+![heat]
+
+With the threshold setting set to 4, false flagged result is eliminated and the position of the cars can be identified.
+
+[label]: ./writeup/label.png
+![label]
+
+ 
 ---
 
 ### Video Implementation
 
 ####1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (somewhat wobbly or unstable bounding boxes are ok as long as you are identifying the vehicles most of the time with minimal false positives.)
-Here's a [link to my video result](./project_video.mp4)
+Here's a link to my video result: [Project\_video_output.mp4](./project_video_output.mp4)
 
 
 ####2. Describe how (and identify where in your code) you implemented some kind of filter for false positives and some method for combining overlapping bounding boxes.
@@ -138,13 +178,13 @@ Here's an example result showing the heatmap from a series of frames of video, t
 
 ### Here are six frames and their corresponding heatmaps:
 
-![alt text][image5]
+[heats]: ./writeup/heats.png
+![heats]
 
 ### Here is the output of `scipy.ndimage.measurements.label()` on the integrated heatmap from all six frames:
-![alt text][image6]
+[result]: ./writeup/result.png
+![result]
 
-### Here the resulting bounding boxes are drawn onto the last frame in the series:
-![alt text][image7]
 
 
 
@@ -154,12 +194,8 @@ Here's an example result showing the heatmap from a series of frames of video, t
 
 ####1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
 
-Here I'll talk about the approach I took, what techniques I used, what worked and why, where the pipeline might fail and how I might improve it if I were going to pursue this project further.  
+The result is still not smooth enough. It should be corrected by higher overlap in window search to have more accuracy position of the cars. Also interframe smoothing can also be implemented to smooth out the result and reduce chances of false positive. Most of the false positve happens on the side of the road. With the previous lane detection, we can use the infomation to detect vehicles only on the road. This could prevent false positive from happening on situration like a car appearing on a roadside billboard. 
+Larger training set can provide better classification results across different coditions and motorcycles. 
 
 ---
 
-Some example images for testing your pipeline on single frames are located in the `test_images` folder.  To help the reviewer examine your work, please save examples of the output from each stage of your pipeline in the folder called `ouput_images`, and include them in your writeup for the project by describing what each image shows.    The video called `project_video.mp4` is the video your pipeline should work well on.  
-
-**As an optional challenge** Once you have a working pipeline for vehicle detection, add in your lane-finding algorithm from the last project to do simultaneous lane-finding and vehicle detection!
-
-**If you're feeling ambitious** (also totally optional though), don't stop there!  We encourage you to go out and take video of your own, and show us how you would implement this project on a new video!
