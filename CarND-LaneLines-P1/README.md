@@ -1,4 +1,4 @@
-#**Finding Lane Lines on the Road** 
+# **Finding Lane Lines on the Road** 
 
 [image1]: ./markdown_images/figure_1.png "Grayscale"
 [image2]: ./markdown_images/figure_2.png "Canny"
