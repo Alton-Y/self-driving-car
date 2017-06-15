@@ -1,15 +1,14 @@
 #**Finding Lane Lines on the Road** 
 
-[//]: # (Image References)
-
 [image1]: ./markdown_images/figure_1.png "Grayscale"
 [image2]: ./markdown_images/figure_2.png "Canny"
 [image3]: ./markdown_images/figure_3.png "Hough"
 [image4]: ./markdown_images/figure_4.png "Linear"
 [image5]: ./markdown_images/figure_5.png "Result"
+
 ---
 
-###1. Edge Detection Pipeline
+### 1. Edge Detection Pipeline
 
 * At first, the image is converted to grayscale. Specifically, the blue channel of the RGB input image is extracted. The reason behind is to enhance the contrast of the yellow line against the road surface. As shown in the figure below, the blue channel grayscale provides the best contrast for edge detection as both the yellow and white lanes stand out. 
 ![RGB Channel Comparison][image1]
@@ -34,14 +33,14 @@ Figure below shows one of the case where a more robust linear fitting algorithm 
 
 
 
-###2. Identify potential shortcomings with your current pipeline
+### 2. Identify potential shortcomings with your current pipeline
 
 One potential shortcoming would be what would happen when the brightness of the road changes. As the time of day or road surface changes, the algorithm is not robust enough to adjust the parameters to adopt to different road surface brightness. This would lead to misjudging the lane position and cause errors. 
 
 Also if other extra road markings appear within the lane (e.g. indicating freeway intersection or lane merge) or construction zone (e.g. temporary road markings), this current setup would possibly break apart and not able to detect the lanes.
 
 
-###3. Suggest possible improvements to your pipeline
+### 3. Suggest possible improvements to your pipeline
 
 A possible improvement would be to analysis more footages to account for possible shortcomings. As a general rule of machine learning, more data leads to better model and predictions. More robust models would allow better lane detections. For example, mulitple footages aiming at different angles from the car can be combined and analysed at the same time. Time could possibly reduce blind spots and correct for lens distortions. 
 
