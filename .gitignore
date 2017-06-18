@@ -10,8 +10,9 @@
 *.gz
 *.toc
 
-CarND-Behavioral-Cloning-P3/simdata/
-CarND-Traffic-Sign-Classifier-Project/traffic-signs-data
-CarND-Vehicle-Detection/dataset/
-CarND-Behavioral-Cloning-P3/video_run1&2.zip
-CarND-Vehicle-Detection/.ipynb_checkpoints/
+.vscode
+CarND-Term1-P2-Traffic-Sign-Classifier-Project/traffic-signs-data
+CarND-Term1-P3-Behavioral-Cloning/simdata/
+CarND-Term1-P3-Behavioral-Cloning/video_run1&2.zip
+CarND-Term1-P5-Vehicle-Detection/dataset/
+CarND-Term1-P5-Vehicle-Detection/.ipynb_checkpoints/
